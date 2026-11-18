@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Shadow Warriors: Rise of the Last Fighter</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090d1b;color:#fff;font-family:system-ui,Arial;overscroll-behavior:none}
+#game{position:fixed;inset:0;display:block;width:100vw;height:100dvh;touch-action:none;background:#101a35}
+#hud{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:10px;pointer-events:none;font-weight:700;text-shadow:0 2px 4px #000}
+.barwrap{width:min(38vw,240px);height:14px;border:2px solid #fff;border-radius:10px;background:#252b3d;overflow:hidden}
+.bar{height:100%;background:linear-gradient(90deg,#39e27a,#b4f65a);width:100%}
+.enemybar{background:linear-gradient(90deg,#ff5a5a,#ffb347)}
+#leftHud,#rightHud{display:flex;flex-direction:column;gap:4px}
+#rightHud{align-items:flex-end}
+.hudline{display:flex;align-items:center;gap:7px;font-size:12px;letter-spacing:.7px}
+#pbar{transition:width .12s}
+#energyWrap{width:min(30vw,170px);height:8px;border:1px solid #d7f6ff;border-radius:8px;background:#18283e;overflow:hidden}
+#energyBar{height:100%;width:0%;background:linear-gradient(90deg,#35c9ff,#c6f5ff);transition:width .12s}
+#healStatus{font-size:11px;color:#ffe49b;text-align:left}
+
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(#070b1ddd,#101a35ee);padding:20px}
+.panel{width:min(560px,100%);max-height:92vh;overflow:auto;text-align:center;padding:24px 20px;border:2px solid #52658f;border-radius:20px;background:linear-gradient(145deg,#18264b,#10162b);box-shadow:0 18px 60px #0009}
+h1{font-size:clamp(28px,7vw,48px);line-height:1.02;margin:0 0 8px;color:#ffd76b;text-shadow:0 3px #8b3b28}
+h2{color:#9fdcff;margin:8px 0}
+p{line-height:1.5;color:#e1e8ff}
+button{border:0;border-radius:12px;padding:12px 18px;margin:6px;background:linear-gradient(180deg,#ffdc75,#f39b37);color:#21162a;font-weight:900;font-size:16px;box-shadow:0 4px #9a5426;touch-action:manipulation}
+button.secondary{background:linear-gradient(180deg,#9edcff,#538bd1);box-shadow:0 4px #31568b}
+button:active{transform:translateY(3px);box-shadow:0 1px #9a5426}
+.small{font-size:13px;color:#b8c8ed}.character-picks{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}.character-picks button{font-size:13px;padding:10px 9px;flex:1 1 130px}.character-picks small{font-size:10px}
+#controls{position:fixed;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:flex-end;padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right));pointer-events:none;z-index:5}
+.pad,.actions{display:flex;gap:9px;pointer-events:auto}
+.ctrl{width:clamp(42px,8.5vh,60px);height:clamp(42px,8.5vh,60px);border-radius:50%;padding:0;background:linear-gradient(#d6e8ff,#688fc8);box-shadow:0 5px #304d7c;color:#10182d;font-size:22px;opacity:.9}
+.actions .ctrl{width:clamp(38px,8.2vh,58px);height:clamp(38px,8.2vh,58px);background:linear-gradient(#ffdc75,#e87842);box-shadow:0 5px #873b2b}
+#storyText{font-size:17px;min-height:70px}
+#comboBanner{position:fixed;top:27%;left:50%;transform:translateX(-50%);z-index:7;pointer-events:none;text-align:center;font-size:clamp(18px,4vw,30px);font-weight:1000;letter-spacing:2px;color:#ffe27b;text-shadow:0 3px 0 #7a321e,0 0 18px #ff8a36;opacity:0;transition:opacity .12s}
+#comboBanner.show{opacity:1}
+#cinematic{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(115deg,#081326eF,#162a42b8 48%,#321d2eeF);animation:cinemaFade 9s forwards;pointer-events:auto}
+#cinematic:before{content:"";position:absolute;inset:-30%;background:repeating-linear-gradient(115deg,transparent 0 70px,#9bd9ff13 72px 74px,transparent 76px 150px);animation:cinemaSweep 7s linear infinite}
+.cinema-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 10%,#020611a8 100%)}
+.cinema-content{position:relative;text-align:center;padding:20px;width:min(900px,94vw);animation:cinemaZoom 8s ease-out both}
+.cinema-kicker{font-size:clamp(11px,2vw,17px);letter-spacing:5px;color:#b9eaff;opacity:0;animation:cinemaText 1s .25s forwards}
+.cinema-title{font-size:clamp(38px,9vw,88px);font-weight:1000;letter-spacing:clamp(2px,1vw,9px);line-height:1;color:#ffdc79;text-shadow:0 5px #803a2d,0 0 30px #ff9e47;opacity:0;animation:cinemaText 1.2s .8s forwards}
+.cinema-subtitle{margin-top:12px;letter-spacing:4px;font-size:clamp(12px,2.5vw,21px);color:#e4efff;opacity:0;animation:cinemaText 1s 1.5s forwards}
+.cinema-line{font-size:clamp(15px,3vw,24px);font-weight:700;color:#fff4d4;margin-top:24px;opacity:0;text-shadow:0 2px 8px #000}
+.line-one{animation:cinemaText 1.3s 2.6s forwards}
+.line-two{animation:cinemaText 1.3s 4.1s forwards}
+.line-three{animation:cinemaText 1.5s 5.7s forwards}
+#skipIntro{margin-top:28px;opacity:0;animation:cinemaText .8s 6.7s forwards}
+.cinema-bottom{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:4px;color:#c5d9ec}
+#cinematic.gone{display:none}
+@keyframes cinemaText{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cinemaZoom{from{transform:scale(1.08)}to{transform:scale(1)}}
+@keyframes cinemaSweep{from{transform:translateX(-8%)}to{transform:translateX(8%)}}
+@keyframes cinemaFade{0%,85%{opacity:1}100%{opacity:1}}
+.hidden{display:none!important}
+@media (orientation:landscape){.pad,.actions{gap:clamp(4px,1.2vw,9px)}.ctrl{width:clamp(42px,10vh,56px);height:clamp(42px,10vh,56px)}.actions .ctrl{width:clamp(38px,9.2vh,54px);height:clamp(38px,9.2vh,54px)}#hud{top:max(7px,env(safe-area-inset-top))}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="comboBanner"></div>
+<div id="hud" class="hidden">
+ <div id="leftHud">
+  <div class="hudline"><span>KAITO</span><span id="hpText">100 / 100 HP</span></div>
+  <div class="barwrap"><div id="pbar" class="bar"></div></div>
+  <div class="hudline"><span>EMBER ENERGY</span><span id="energyText">0%</span></div>
+  <div id="energyWrap"><div id="energyBar"></div></div>
+  <div id="healStatus">HEAL READY</div>
+ </div>
+ <div id="rightHud"><div id="enemyName">ROGUE</div><div class="barwrap"><div id="ebar" class="bar enemybar"></div></div></div>
+</div>
+<div id="controls" class="hidden">
+ <div class="pad">
+  <button class="ctrl" data-act="left">◀</button><button class="ctrl" data-act="right">▶</button>
+ </div>
+ <div class="actions">
+  <button class="ctrl" data-act="jump">⬆</button>
+  <button class="ctrl" data-act="block">🛡</button>
+  <button class="ctrl" data-act="kick" title="Kick">K</button>
+  <button class="ctrl" data-act="punch">P</button>
+  <button class="ctrl" data-act="uppercut" title="Uppercut">U</button>
+  <button class="ctrl" data-act="special" title="Character special ability">✦</button>
+  <button class="ctrl" data-act="heal" title="Restore health">✚</button>
+ </div>
+</div>
+<div id="overlay">
+ <div class="panel" id="panel">
+  <p class="small">AN ORIGINAL 2D FIGHTING ADVENTURE · UPDATE 2.0</p>
+  <h1>SHADOW<br>WARRIORS</h1>
+  <h2>RISE OF THE LAST FIGHTER</h2>
+  <p>When the Ember Crystal falls, darkness rises. One young warrior must face the Shadow Clan and save the valley.</p>
+  <p class="small">A long time ago, the valley was protected by the light of the crystal...</p>
+  <button id="enterGame">ENTER THE WORLD</button>
+  <p class="small">Tap to begin • Music starts after your tap</p>
+ </div>
+</div>
+<div id="cinematic">
+ <div class="cinema-vignette"></div>
+ <div class="cinema-content">
+  <div class="cinema-kicker">AN EMBER VALLEY LEGEND</div>
+  <div class="cinema-title">SHADOW WARRIORS</div>
+  <div class="cinema-subtitle">RISE OF THE LAST FIGHTER</div>
+  <div class="cinema-line line-one">When the crystal lost its light...</div>
+  <div class="cinema-line line-two">the Shadow Clan took the valley.</div>
+  <div class="cinema-line line-three">One warrior will stand against the darkness.</div>
+  <button id="skipIntro" class="secondary">SKIP INTRO</button>
+ </div>
+ <div class="cinema-bottom">CHAPTER 1 · THE EMBER CRYSTAL</div>
+</div>
+<button id="musicToggle" class="secondary" style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:12;padding:8px 12px;font-size:12px">♫ MUSIC: ON</button>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let W=innerWidth,H=innerHeight,dpr=Math.min(devicePixelRatio||1,2);
+function resize(){W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);addEventListener('orientationchange',()=>setTimeout(resize,120));if(window.visualViewport)visualViewport.addEventListener('resize',resize);resize();
+const overlay=document.getElementById('overlay'),panel=document.getElementById('panel'),hud=document.getElementById('hud'),controls=document.getElementById('controls');
+const pbar=document.getElementById('pbar'),ebar=document.getElementById('ebar'),enemyName=document.getElementById('enemyName');
+const hpText=document.getElementById('hpText'),energyText=document.getElementById('energyText'),energyBar=document.getElementById('energyBar'),healStatus=document.getElementById('healStatus');
+let mode='menu',keys={},player,enemy,stage=1,dialogIndex=0,attackFlash=0,particles=[],last=0,voiceOn=false;
+let currentCharacter='Kaito';
+const fighters={Kaito:{hp:110,energy:12,body:'#167bb8',trim:'#e8f4ff',hair:'#15274d',band:'#f4c84d',special:'Ember Burst'},Mira:{hp:95,energy:18,body:'#9b4f9d',trim:'#ffe2fa',hair:'#302047',band:'#7de5dc',special:'Moon Wave'},Akari:{hp:100,energy:15,body:'#b65335',trim:'#ffe5c8',hair:'#42251d',band:'#ffd36b',special:'Solar Spin'}};
+let audioCtx=null,musicTimer=null,musicEnabled=true,musicStep=0;
+const melody=[392,440,523.25,659.25,587.33,523.25,440,392,329.63,392,440,523.25,440,392,329.63,293.66];
+function startMusic(){
+ if(!musicEnabled)return;
+ try{
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  if(!audioCtx)audioCtx=new AC();if(audioCtx.state==='suspended')audioCtx.resume();
+  if(musicTimer)return;
+  const playNote=()=>{
+   if(!audioCtx||!musicEnabled)return;
+   const now=audioCtx.currentTime, f=melody[musicStep%melody.length];
+   const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+   osc.type='triangle';osc.frequency.setValueAtTime(f,now);
+   gain.gain.setValueAtTime(0.0001,now);gain.gain.exponentialRampToValueAtTime(0.068,now+0.025);gain.gain.exponentialRampToValueAtTime(0.0001,now+0.32);
+   osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+0.34);
+   if(musicStep%4===0){
+    const bass=audioCtx.createOscillator(),bg=audioCtx.createGain();
+    bass.type='sine';bass.frequency.setValueAtTime(f/2.0,now);
+    bg.gain.setValueAtTime(0.0001,now);bg.gain.exponentialRampToValueAtTime(0.05,now+0.03);bg.gain.exponentialRampToValueAtTime(0.0001,now+0.42);
+    bass.connect(bg);bg.connect(audioCtx.destination);bass.start(now);bass.stop(now+0.44);
+   }
+   musicStep++;
+  };
+  playNote();musicTimer=setInterval(playNote,360);
+ }catch(e){}
+}
+function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null}}
+function playKickSound(){
+ try{
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return;
+  if(!audioCtx)audioCtx=new AC();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  const now=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator();
+  const gain=audioCtx.createGain();
+  osc.type='triangle';
+  osc.frequency.setValueAtTime(170,now);
+  osc.frequency.exponentialRampToValueAtTime(75,now+0.12);
+  gain.gain.setValueAtTime(0.0001,now);
+  gain.gain.exponentialRampToValueAtTime(0.16,now+0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001,now+0.16);
+  osc.connect(gain);gain.connect(audioCtx.destination);
+  osc.start(now);osc.stop(now+0.17);
+ }catch(e){}
+}
+function playImpactSound(kind){
+ try{
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  if(!audioCtx)audioCtx=new AC();if(audioCtx.state==='suspended')audioCtx.resume();
+  const now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.type=kind==='special'?'sawtooth':'triangle';
+  const start=kind==='special'?310:kind==='uppercut'?220:145;
+  osc.frequency.setValueAtTime(start,now);osc.frequency.exponentialRampToValueAtTime(kind==='special'?95:65,now+.18);
+  gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(kind==='special'?.13:.085,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+.2);
+  osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+.21);
+ }catch(e){}
+}
+
+const lines=[
+ ["KAITO","The Ember Crystal is fading. I have to reach the old temple."],
+ ["MIRA","Kaito! The Shadow Clan has crossed the bridge. Be careful!"],
+ ["KAITO","I won't let them take the crystal. Stand back!"],
+ ["ROGUE","The clan's power belongs to our master!"],
+ ["KAITO","Then I'll stop you here."]
+];
+let comboBannerTimer=0;
+function showCombo(text,isEnemy){
+ const el=document.getElementById('comboBanner');
+ el.textContent=text;el.style.color=isEnemy?'#ff9b9b':'#ffe27b';el.classList.add('show');
+ comboBannerTimer=1.05;
+}
+// Dialogue uses real recorded audio files only. No browser text-to-speech is used.
+const humanVoiceFiles=[
+ 'voice/kaito-1.mp3','voice/mira-1.mp3','voice/kaito-2.mp3','voice/rogue-1.mp3','voice/kaito-3.mp3',
+ 'voice/akari-1.mp3','voice/boss-1.mp3','voice/victory-1.mp3'
+];
+let currentVoiceAudio=null;
+function playHumanVoice(lineIndex){
+ const file=humanVoiceFiles[lineIndex];
+ if(!file)return false;
+ try{
+  if(currentVoiceAudio){currentVoiceAudio.pause();currentVoiceAudio.currentTime=0;}
+  currentVoiceAudio=new Audio(file);
+  currentVoiceAudio.preload='auto';
+  currentVoiceAudio.addEventListener('error',()=>showVoiceHint('Recording missing: '+file+'. Add the MP3 file to the voice folder.'),{once:true});
+  const playback=currentVoiceAudio.play();
+  if(playback&&typeof playback.then==='function')playback.then(()=>showVoiceHint('Playing recorded character voice.')).catch(()=>showVoiceHint('Could not play '+file+'. Check the MP3 file.'));
+  return true;
+ }catch(e){showVoiceHint('This browser could not play the recording.');return false;}
+}
+function stopHumanVoice(){
+ if(currentVoiceAudio){currentVoiceAudio.pause();currentVoiceAudio.currentTime=0;currentVoiceAudio=null;}
+}
+function showVoiceHint(message){
+ const hint=document.getElementById('voiceHint');
+ if(hint)hint.textContent=message;
+}
+function speak(text){
+ if(!voiceOn)return false;
+ const lineIndex=lines.findIndex(item=>item[1]===text);
+ return lineIndex>=0?playHumanVoice(lineIndex):false;
+}
+
+function showPanel(title,body,buttons){stopHumanVoice();overlay.classList.remove('hidden');panel.innerHTML='<h1>'+title+'</h1>'+body+buttons}
+function story(){mode='intro';showPanel('A SHADOW IS RISING',`<h2>EMBER VALLEY · NIGHTFALL</h2><p id="storyText">For generations, the Ember Crystal protected the valley. Tonight, the Shadow Clan has stormed the village and stolen its light.</p><p class="small">A new fighter is about to rise...</p><button id="introNext">BEGIN CHAPTER 1</button>`,'');document.getElementById('introNext').onclick=()=>{dialogIndex=0;showDialog()};speak('For generations, the Ember Crystal protected the valley. Tonight, the Shadow Clan has stormed the village and stolen its light.')}
+function showDialog(){let [who,line]=lines[dialogIndex];showPanel('CHAPTER 1 · THE EMBER CRYSTAL',`<h2>${who}</h2><p id="storyText">“${line}”</p><button id="next"> ${dialogIndex===lines.length-1?'FIGHT!':'CONTINUE'} </button><button class="secondary" id="voice">RECORDED VOICE: ${voiceOn?'ON':'OFF'}</button><p class="small" id="voiceHint">Real recorded voices only. Add the five MP3 clips in the voice folder; subtitles work without them.</p>`,'');document.getElementById('next').onclick=()=>{dialogIndex++;if(dialogIndex<lines.length)showDialog();else startFight()};document.getElementById('voice').onclick=(e)=>{voiceOn=!voiceOn;e.target.textContent='RECORDED VOICE: '+(voiceOn?'ON':'OFF');if(voiceOn){if(!speak(line))showVoiceHint('No recording is assigned to this line yet.');}else{stopHumanVoice();showVoiceHint('Recorded voices are off.');}};speak(line)}
+function how(){showPanel('HOW TO PLAY',`<p><b>Move:</b> ◀ ▶<br><b>Jump:</b> ⬆<br><b>Block:</b> 🛡<br><b>Kick:</b> K &nbsp; <b>Punch:</b> P<br><b>Uppercut:</b> U<br><b>Special:</b> ✦ (when energy is ready; depends on your fighter)<br><b>Ember Heal:</b> ✚ restores 30 HP (10-second cooldown)<br><b>Combos:</b> Mix punches, kicks and uppercuts to build combos. Every third hit adds a finisher bonus. Enemies can combo too!</p><p>Kick has its own animated move and sound. Character voices are optional real MP3 recordings; the game does not use robotic browser speech.</p><button id="back">BACK</button>`,'');document.getElementById('back').onclick=menu}
+function menu(){mode='menu';hud.classList.add('hidden');controls.classList.add('hidden');showPanel('SHADOW<br>WARRIORS',`<h2>Rise of the Last Fighter · Update 2.0</h2><p>Choose your warrior before entering the Ember Valley.</p><div class="character-picks"><button class="${currentCharacter==='Kaito'?'':'secondary'}" id="pickKaito">⚔️ KAITO<br><small>Balanced · Ember Burst</small></button><button class="${currentCharacter==='Mira'?'':'secondary'}" id="pickMira">🌙 MIRA<br><small>Quick energy · Moon Wave</small></button><button class="${currentCharacter==='Akari'?'':'secondary'}" id="pickAkari">🔥 AKARI<br><small>Strong attacks · Solar Spin</small></button></div><p class="small">3 chapters · 9 enemy waves · 3 boss battles</p><button id="start">START ADVENTURE</button><button class="secondary" id="how">HOW TO PLAY</button><p class="small">Best played in landscape. Your progress resets when you restart the adventure.</p>`,'');
+ for(const name of ['Kaito','Mira','Akari'])document.getElementById('pick'+name).onclick=()=>{currentCharacter=name;menu()};
+ document.getElementById('start').onclick=story;document.getElementById('how').onclick=how}
+function spawnEnemy(){let boss=workersDefeated>=3;let names=stage===1?['Shadow Scout','Clan Guard','Night Stalker']:stage===2?['Frost Raider','Ice Archer','Frost Captain']:['Temple Sentinel','Crystal Knight','Void Champion'];let hp=boss?260+stage*45:100+workersDefeated*24+stage*12;enemy={x:W*.72,y:0,hp:hp,maxHp:hp,face:-1,attack:0,attackDuration:0,attackType:null,block:false,inv:0,isBoss:boss,comboCount:0,comboTimer:0,kind:workersDefeated};enemyName.textContent=boss?(stage===1?'EMBER CLAN LEADER':stage===2?'FROST WARLORD':'VOID EMPEROR'):names[Math.min(workersDefeated,2)];ebar.style.width='100%';if(boss)showCombo('CHAPTER '+stage+' · BOSS BATTLE',true);}
+let workersDefeated=0;
+function startFight(){mode='fight';overlay.classList.add('hidden');hud.classList.remove('hidden');controls.classList.remove('hidden');stage=1;workersDefeated=0;let spec=fighters[currentCharacter];player={x:W*.25,y:0,vx:0,vy:0,hp:spec.hp,maxHp:spec.hp,face:1,energy:0,attack:0,attackDuration:0,attackType:null,block:false,ground:true,inv:0,jumpY:0,healCooldown:0,healFlash:0,comboCount:0,comboTimer:0,character:currentCharacter};document.querySelector('#leftHud .hudline span').textContent=currentCharacter.toUpperCase();spawnEnemy();speak('Defeat the Shadow Clan workers!') }
+function enemyDefeated(){if(!enemy.isBoss){workersDefeated++;if(workersDefeated<3){showPanel('WAVE CLEARED',`<h2>${workersDefeated} OF 3 ENEMIES DEFEATED</h2><p>A stronger fighter enters the arena. Get ready for the next wave!</p><button id="nextWave">NEXT FIGHT</button>`,'');mode='wave';document.getElementById('nextWave').onclick=()=>{overlay.classList.add('hidden');mode='fight';spawnEnemy()};}else{showPanel('THE BOSS ARRIVES',`<h2>CHAPTER ${stage} · FINAL WAVE</h2><p>A powerful enemy steps into the arena. Prepare for the boss battle!</p><button id="bossFight">FACE THE BOSS</button>`,'');mode='bossIntro';document.getElementById('bossFight').onclick=()=>{overlay.classList.add('hidden');mode='fight';spawnEnemy()};}}else if(stage<3){stage++;workersDefeated=0;player.hp=Math.min(player.maxHp,player.hp+25);player.energy=35;showPanel('CHAPTER '+(stage-1)+' CLEARED',`<h2>THE JOURNEY CONTINUES</h2><p>Your warrior travels to ${stage===2?'the frozen mountain pass':'the ancient crystal temple'}. Health restored and energy recharged!</p><button id="nextChapter">ENTER CHAPTER ${stage}</button>`,'');mode='chapter';document.getElementById('nextChapter').onclick=()=>{overlay.classList.add('hidden');mode='fight';spawnEnemy()};}else{endFight(true)}}
+function endFight(win){mode='end';controls.classList.add('hidden');hud.classList.add('hidden');if(win){showPanel('VICTORY!',`<h2>All 3 Chapters Complete</h2><p>Your warrior has defeated the enemies of Ember Valley, the Frozen Pass and the Crystal Temple. But a mysterious voice echoes from the temple...</p><p><i>“The crystal is only the beginning.”</i></p><button id="again">PLAY AGAIN</button><button class="secondary" id="home">MAIN MENU</button>`,'');speak('The crystal is only the beginning.');}else{showPanel('TRY AGAIN',`<p>Your warrior needs more training before facing the Shadow Clan again.</p><button id="again">RETRY</button><button class="secondary" id="home">MAIN MENU</button>`,'')}
+document.getElementById('again').onclick=startFight;document.getElementById('home').onclick=menu}
+function ground(){return H*.76}
+function drawFighter(o,isPlayer){
+ let moving=Math.abs(o.vx||0)>5,phase=performance.now()/125+(isPlayer?0:1.4);
+ let bob=moving?Math.abs(Math.sin(phase))*3:Math.sin(phase*.7)*1.5;
+ let legSwing=moving?Math.sin(phase)*7:0;
+ let x=o.x,y=ground()-(o.jumpY||0)+bob;
+ ctx.save();ctx.translate(x,y);
+ let scale=o.isBoss?1.42:1;
+ ctx.scale(o.face*scale,scale);
+ // soft ground shadow
+ ctx.fillStyle='#07101c66';ctx.beginPath();ctx.ellipse(0,4,30+(o.jumpY||0)*.025,8,0,0,Math.PI*2);ctx.fill();
+ // trailing scarf
+ ctx.fillStyle=isPlayer?'#e9b94e':'#b65bba';
+ ctx.beginPath();ctx.moveTo(-8,-91);ctx.quadraticCurveTo(-28,-96-Math.sin(phase)*5,-42,-84+Math.sin(phase)*6);ctx.lineTo(-23,-75);ctx.quadraticCurveTo(-24,-87,-8,-82);ctx.fill();
+ // Legs: a kick extends the lead leg with a visible snap animation.
+ const kicking=o.attackType==='kick'&&o.attack>0;
+ const attackDuration=o.attackDuration||.38;
+ const attackProgress=Math.max(0,Math.min(1,1-o.attack/attackDuration));
+ const kickProgress=kicking?Math.sin(attackProgress*Math.PI):0;
+ ctx.strokeStyle=isPlayer?'#243b79':'#4a234f';ctx.lineWidth=12;ctx.lineCap='round';
+ ctx.beginPath();ctx.moveTo(-8,-39);ctx.lineTo(-11-legSwing,-17);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(8,-39);
+ if(kicking){ctx.lineTo(26+kickProgress*25,-42-kickProgress*5);ctx.stroke();ctx.strokeStyle='#111a2d';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(26+kickProgress*25,-42-kickProgress*5);ctx.lineTo(43+kickProgress*25,-39-kickProgress*5);ctx.stroke();ctx.fillStyle='#f5c84e';ctx.beginPath();ctx.ellipse(45+kickProgress*25,-39-kickProgress*5,10,5,-.12,0,Math.PI*2);ctx.fill();}
+ else{ctx.lineTo(11+legSwing,-17);ctx.stroke();ctx.strokeStyle='#111a2d';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(11+legSwing,-17);ctx.lineTo(21+legSwing,-7);ctx.stroke();}
+ if(kicking&&kickProgress>.35){ctx.strokeStyle='#ffe7a0';ctx.lineWidth=3;ctx.beginPath();ctx.arc(24+kickProgress*28,-40,24,-.55,.45);ctx.stroke();}
+ ctx.strokeStyle='#111a2d';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(-11-legSwing,-17);ctx.lineTo(-20-legSwing,-7);ctx.stroke();
+ // body and tunic
+ ctx.fillStyle=isPlayer?(fighters[currentCharacter]?.body||'#167bb8'):(o.isBoss?'#5d286f':o.kind===1?'#4d7894':'#8e315d');
+ ctx.beginPath();ctx.moveTo(-17,-83);ctx.lineTo(17,-83);ctx.lineTo(21,-42);ctx.lineTo(-21,-42);ctx.closePath();ctx.fill();
+ ctx.fillStyle=isPlayer?(fighters[currentCharacter]?.trim||'#e8f4ff'):'#ffd4df';ctx.beginPath();ctx.moveTo(-5,-79);ctx.lineTo(5,-79);ctx.lineTo(9,-44);ctx.lineTo(-9,-44);ctx.fill();
+ ctx.strokeStyle=isPlayer?(fighters[currentCharacter]?.band||'#f5c84e'):'#e6a3ff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-17,-58);ctx.lineTo(17,-58);ctx.stroke();
+ // neck and head
+ ctx.fillStyle='#d99f78';ctx.fillRect(-5,-91,10,12);
+ ctx.fillStyle='#efbd91';ctx.beginPath();ctx.arc(0,-101,15,0,Math.PI*2);ctx.fill();
+ // hair cap and headband
+ ctx.fillStyle=isPlayer?(fighters[currentCharacter]?.hair||'#15274d'):'#241426';ctx.beginPath();ctx.arc(0,-105,16,Math.PI,Math.PI*2);ctx.lineTo(16,-99);ctx.quadraticCurveTo(0,-108,-16,-99);ctx.fill();
+ ctx.fillStyle=isPlayer?(fighters[currentCharacter]?.band||'#f4c84d'):'#d9a0ff';ctx.fillRect(-16,-102,32,4);
+ // eyes
+ ctx.fillStyle='#263047';ctx.fillRect(5,-102,3,3);
+ // arms
+ ctx.lineCap='round';ctx.lineWidth=10;ctx.strokeStyle='#efbd91';
+ if(o.attack>0&&o.attackType!=='kick'){
+  ctx.beginPath();ctx.moveTo(13,-74);ctx.lineTo(o.attackType==='uppercut'?29:43,o.attackType==='uppercut'?-105:-70);ctx.stroke();
+  ctx.fillStyle=isPlayer?'#8feaff':'#ff8b8b';ctx.beginPath();ctx.arc(46,-69,9,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=isPlayer?'#8feaff':'#ff9a9a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(45,-69,17,-.8,.8);ctx.stroke();
+ }else{
+  ctx.beginPath();ctx.moveTo(13,-75);ctx.lineTo(20,-52+Math.sin(phase)*3);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-13,-75);ctx.lineTo(-20,-53-Math.sin(phase)*3);ctx.stroke();
+ }
+ if(o.block){ctx.strokeStyle='#8eeaff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,-62,35,-1.3,1.3);ctx.stroke()}
+ ctx.restore();
+}
+function background(){
+ const t=performance.now()/1000;
+ let g=ctx.createLinearGradient(0,0,0,H);if(stage===1){g.addColorStop(0,'#76b9e8');g.addColorStop(.48,'#c5e2ed');g.addColorStop(.76,'#f7c58e');g.addColorStop(1,'#d98c65')}else if(stage===2){g.addColorStop(0,'#294b78');g.addColorStop(.48,'#7196ad');g.addColorStop(.76,'#a9c5c9');g.addColorStop(1,'#496b79')}else{g.addColorStop(0,'#241c49');g.addColorStop(.48,'#60436f');g.addColorStop(.76,'#b06b65');g.addColorStop(1,'#392b4d')}ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ // warm sun and glow
+ let sunX=W*.78,sunY=H*.2,sunR=Math.min(W,H)*.075;
+ let glow=ctx.createRadialGradient(sunX,sunY,sunR*.2,sunX,sunY,sunR*2.8);
+ glow.addColorStop(0,'#fff6cfaa');glow.addColorStop(1,'#fff1c000');ctx.fillStyle=glow;ctx.fillRect(sunX-sunR*3,sunY-sunR*3,sunR*6,sunR*6);
+ ctx.fillStyle='#fff2bd';ctx.beginPath();ctx.arc(sunX,sunY,sunR,0,Math.PI*2);ctx.fill();
+ // drifting soft clouds
+ function cloud(x,y,k){ctx.fillStyle='#fff9efb8';ctx.beginPath();ctx.ellipse(x,y,34*k,12*k,0,0,Math.PI*2);ctx.ellipse(x-19*k,y-7*k,17*k,14*k,0,0,Math.PI*2);ctx.ellipse(x+5*k,y-13*k,22*k,18*k,0,0,Math.PI*2);ctx.ellipse(x+25*k,y-5*k,18*k,13*k,0,0,Math.PI*2);ctx.fill()}
+ for(let i=0;i<5;i++){let x=((i*W*.29+t*(8+i*2))%(W+160))-80;cloud(x,H*(.13+(i%3)*.075),.65+(i%2)*.35)}
+ // far mountains with snowy/bright ridges
+ for(let i=0;i<6;i++){let x=i*W/4-80,peak=H*(.31+(i%2)*.07);ctx.fillStyle=i%2?'#8ca9b4':'#9bb9bd';ctx.beginPath();ctx.moveTo(x,ground());ctx.lineTo(x+W*.19,peak);ctx.lineTo(x+W*.38,ground());ctx.closePath();ctx.fill();ctx.fillStyle='#e8f0e6';ctx.beginPath();ctx.moveTo(x+W*.19,peak);ctx.lineTo(x+W*.145,peak+H*.09);ctx.lineTo(x+W*.19,peak+H*.065);ctx.lineTo(x+W*.235,peak+H*.095);ctx.closePath();ctx.fill()}
+ // green foothills
+ ctx.fillStyle=stage===1?'#638d72':stage===2?'#6b8790':'#51466f';ctx.beginPath();ctx.moveTo(0,H*.61);ctx.quadraticCurveTo(W*.22,H*.47,W*.42,H*.62);ctx.quadraticCurveTo(W*.68,H*.48,W,H*.6);ctx.lineTo(W,ground());ctx.lineTo(0,ground());ctx.fill();
+ // distant village / temple
+ ctx.fillStyle=stage===1?'#536b62':stage===2?'#526c7d':'#403457';ctx.fillRect(W*.43,H*.47,W*.14,H*.18);
+ ctx.fillStyle='#465c55';ctx.beginPath();ctx.moveTo(W*.4,H*.48);ctx.lineTo(W*.5,H*.39);ctx.lineTo(W*.6,H*.48);ctx.fill();
+ ctx.fillStyle='#f5c77a';for(let i=0;i<3;i++)ctx.fillRect(W*(.46+i*.045),H*.51,7,10);
+ // river below the bridge
+ ctx.fillStyle=stage===1?'#5e9fa5':stage===2?'#91c8db':'#6e4d91';ctx.beginPath();ctx.moveTo(0,H*.7);ctx.quadraticCurveTo(W*.5,H*.63,W,H*.7);ctx.lineTo(W,ground()+8);ctx.lineTo(0,ground()+8);ctx.fill();
+ ctx.strokeStyle='#b4e4d9';ctx.lineWidth=3;for(let i=0;i<6;i++){let x=(i*W/5+t*18)%(W+30);ctx.beginPath();ctx.moveTo(x,H*.77);ctx.lineTo(x+28,H*.77);ctx.stroke()}
+ // stone bridge across river
+ ctx.fillStyle=stage===1?'#9b8c79':stage===2?'#b3c6c9':'#8b739d';ctx.beginPath();ctx.moveTo(W*.13,H*.68);ctx.quadraticCurveTo(W*.5,H*.57,W*.87,H*.68);ctx.lineTo(W*.87,H*.72);ctx.quadraticCurveTo(W*.5,H*.62,W*.13,H*.72);ctx.fill();
+ ctx.strokeStyle='#554f4a';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(W*.13,H*.68);ctx.quadraticCurveTo(W*.5,H*.57,W*.87,H*.68);ctx.stroke();
+ // bridge stones
+ ctx.strokeStyle='#756d62';ctx.lineWidth=2;for(let i=0;i<9;i++){let x=W*(.17+i*.082);ctx.beginPath();ctx.moveTo(x,H*.66);ctx.lineTo(x,H*.71);ctx.stroke()}
+ // trees at both edges and mid-ground
+ function tree(x,y,k){ctx.fillStyle='#684b38';ctx.fillRect(x-5*k,y-43*k,10*k,45*k);for(let j=0;j<3;j++){ctx.fillStyle=['#32634b','#3f7953','#548b5c'][j];ctx.beginPath();ctx.arc(x+(j-1)*8*k,y-48*k-j*10*k,19*k,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#78a86b';ctx.beginPath();ctx.arc(x-7*k,y-59*k,6*k,0,Math.PI*2);ctx.fill()}
+ for(let i=0;i<12;i++){let x=i*W/11+Math.sin(i*4)*10;let y=H*(.68+(i%3)*.025);tree(x,y,.65+(i%4)*.15)}
+ // foreground ground
+ let gr=ctx.createLinearGradient(0,ground(),0,H);gr.addColorStop(0,'#53744e');gr.addColorStop(.15,'#354d3c');gr.addColorStop(1,'#1b2b2b');ctx.fillStyle=gr;ctx.fillRect(0,ground(),W,H-ground());
+ ctx.fillStyle='#86a96b';ctx.fillRect(0,ground(),W,5);
+ // Chapter title marker
+ ctx.fillStyle='#ffffffcc';ctx.font='bold 12px system-ui';ctx.fillText(stage===1?'CHAPTER 1 · EMBER VALLEY':stage===2?'CHAPTER 2 · FROZEN PASS':'CHAPTER 3 · CRYSTAL TEMPLE',14,H*.57);
+ // grass blades and small flowers
+ for(let i=0;i<Math.ceil(W/18);i++){let x=i*18+((i*13)%9);ctx.strokeStyle=i%3?'#91b879':'#d8c477';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,ground()+9);ctx.lineTo(x-3,ground()+2-(i%4));ctx.stroke();if(i%7===0){ctx.fillStyle='#ffe2a3';ctx.beginPath();ctx.arc(x+5,ground()+12,2,0,Math.PI*2);ctx.fill()}}
+}
+function update(dt){if(comboBannerTimer>0){comboBannerTimer-=dt;if(comboBannerTimer<=0)document.getElementById('comboBanner').classList.remove('show')}if(mode!=='fight')return;let speed=240;
+ if(player.healCooldown>0)player.healCooldown=Math.max(0,player.healCooldown-dt);
+ if(player.healFlash>0)player.healFlash-=dt;
+ const healPressed=!!keys.heal;keys.heal=false;
+ if(healPressed&&player.healCooldown<=0&&player.hp<player.maxHp){
+   player.hp=Math.min(player.maxHp,player.hp+30);player.healCooldown=10;player.healFlash=.7;
+   for(let i=0;i<18;i++)particles.push({x:player.x+(Math.random()-.5)*55,y:ground()-55-Math.random()*65,vx:(Math.random()-.5)*70,vy:-40-Math.random()*100,t:.65});
+   speak('Ember healing!');
+ }
+ if(player.healCooldown<=0&&player.hp>=player.maxHp)healStatus.textContent='HEAL READY';
+ else if(player.healCooldown>0)healStatus.textContent='HEAL IN '+player.healCooldown.toFixed(1)+'s';
+ else healStatus.textContent='HEAL READY';
+ player.vx=0;if(keys.left)player.vx=-speed;if(keys.right)player.vx=speed;
+ player.x=Math.max(30,Math.min(W-30,player.x+player.vx*dt));if(player.vx)player.face=player.vx>0?1:-1;
+ if(player.inv>0)player.inv-=dt;if(enemy.inv>0)enemy.inv-=dt;
+ if(keys.jump&&player.ground){player.vy=-590;player.ground=false}
+ if(!player.ground){player.vy+=1300*dt;player.jumpY=(player.jumpY||0)-player.vy*dt;if(player.jumpY<=0){player.jumpY=0;player.vy=0;player.ground=true}}
+ player.block=!!keys.block;
+ if(player.attack>0){
+  player.attack=Math.max(0,player.attack-dt);
+  if(player.attack===0)player.attackType=null;
+ }
+ if(player.comboTimer>0)player.comboTimer-=dt;else player.comboCount=0;
+ if(enemy.comboTimer>0)enemy.comboTimer-=dt;else enemy.comboCount=0;
+ const specialPressed=!!keys.special&&player.energy>=100;
+ const action= specialPressed?'special':keys.uppercut?'uppercut':keys.kick?'kick':keys.punch?'punch':null;
+ if(action&&player.attack<=0){
+  player.attackType=action;
+  player.attackDuration=action==='kick'?.42:action==='special'?.5:action==='uppercut'?.36:.27;
+  player.attack=player.attackDuration;
+  if(action==='special')player.energy=0;
+  const range=action==='special'?170:action==='kick'?118:action==='uppercut'?112:100;
+  if(Math.abs(enemy.x-player.x)<range+35&&player.face*(enemy.x-player.x)>-15){
+   player.comboCount=player.comboTimer>0?player.comboCount+1:1;
+   player.comboTimer=1.35;
+   const baseDamage=action==='special'?({Kaito:42,Mira:34,Akari:48}[currentCharacter]||40):action==='kick'?18:action==='uppercut'?24:10;
+   if(action==='kick')playKickSound();else playImpactSound(action);
+   const comboBonus=player.comboCount>=5?12:player.comboCount>=3?5:0;
+   enemy.hp=Math.max(0,enemy.hp-baseDamage-comboBonus);
+   enemy.inv=.18;
+   if(action==='special')showCombo(fighters[currentCharacter].special+'!',false);else if(player.comboCount>=2)showCombo(currentCharacter.toUpperCase()+' · '+player.comboCount+' HIT COMBO!',false);
+   for(let i=0;i<(action==='special'?22:8);i++)particles.push({x:enemy.x,y:ground()-65,vx:(Math.random()-.5)*(action==='special'?260:180),vy:-Math.random()*(action==='special'?240:170),t:action==='special'?.65:.35});
+  }
+  player.energy=Math.min(100,player.energy+(action==='special'?0:12));
+  keys.punch=keys.kick=keys.uppercut=keys.special=false;
+ }
+ // Enemy advances and chains attacks into its own combo.
+ let dist=player.x-enemy.x;enemy.face=dist>0?1:-1;
+ if(Math.abs(dist)>78)enemy.x+=Math.sign(dist)*105*dt;
+ if(enemy.attack>0){enemy.attack=Math.max(0,enemy.attack-dt);if(enemy.attack===0)enemy.attackType=null;}
+ if(Math.abs(dist)<90&&enemy.attack<=0){
+  enemy.attackDuration=.58;
+  enemy.attack=enemy.attackDuration;
+  enemy.attackType=Math.random()<.42?'kick':'punch';
+  if(enemy.attackType==='kick')playKickSound();
+  enemy.comboCount=enemy.comboTimer>0?enemy.comboCount+1:1;
+  enemy.comboTimer=1.5;
+  if(enemy.comboCount>=2)showCombo('SHADOW CLAN · '+enemy.comboCount+' HIT COMBO!',true);
+  if(!player.block&&player.inv<=0){
+   let enemyDamage=(enemy.comboCount>=3?14:9)+(stage-1)*2+(enemy.isBoss?4:0);
+   player.hp=Math.max(0,player.hp-enemyDamage);player.inv=.48;
+  }
+ }
+ if(enemy.hp<=0&&mode==='fight')enemyDefeated();if(player.hp<=0&&mode==='fight')endFight(false);
+ for(let q of particles){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=500*dt;q.t-=dt}particles=particles.filter(q=>q.t>0);
+ pbar.style.width=(100*player.hp/player.maxHp)+'%';
+ hpText.textContent=Math.ceil(player.hp)+' / '+player.maxHp+' HP';
+ energyText.textContent=Math.round(player.energy)+'%';energyBar.style.width=player.energy+'%';
+ ebar.style.width=(100*enemy.hp/enemy.maxHp)+'%';
+}
+function render(){ctx.clearRect(0,0,W,H);background();if(mode==='fight'){
+ if(player.healFlash>0){ctx.save();ctx.globalAlpha=Math.min(1,player.healFlash*1.8);ctx.strokeStyle='#9effbd';ctx.lineWidth=5;ctx.beginPath();ctx.arc(player.x,ground()-58-(player.jumpY||0),52,0,Math.PI*2);ctx.stroke();ctx.restore()}
+ drawFighter(player,true);drawFighter(enemy,false);
+ for(let q of particles){ctx.fillStyle='#ffe17a';ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill()}
+ /* Energy is shown in the clean player HUD above. */
+ }else if(mode==='menu'||mode==='story'||mode==='end'){ctx.fillStyle='#ffffff22';ctx.font='bold 22px system-ui';ctx.fillText('EMBER VALLEY',W*.06,H*.16)}}
+function loop(t){let dt=Math.min((t-last)/1000||0,.033);last=t;update(dt);render();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+document.querySelectorAll('[data-act]').forEach(b=>{let a=b.dataset.act;const down=e=>{e.preventDefault();keys[a]=true};const up=e=>{e.preventDefault();if(a!=='heal')keys[a]=false};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('pointerleave',up)});
+addEventListener('keydown',e=>{let map={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowUp:'jump',w:'jump',j:'punch',k:'kick',l:'block',i:'special',u:'uppercut',h:'heal'};if(map[e.key])keys[map[e.key]]=true});
+addEventListener('keyup',e=>{let map={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowUp:'jump',w:'jump',j:'punch',k:'kick',l:'block',i:'special',u:'uppercut'};if(map[e.key])keys[map[e.key]]=false});
+const cinematic=document.getElementById('cinematic');
+function closeCinematic(){cinematic.classList.add('gone')}
+document.getElementById('skipIntro').onclick=closeCinematic;
+setTimeout(closeCinematic,9000);
+document.getElementById('enterGame').onclick=()=>{startMusic();menu()};
+document.getElementById('musicToggle').onclick=()=>{musicEnabled=!musicEnabled;document.getElementById('musicToggle').textContent='♫ MUSIC: '+(musicEnabled?'ON':'OFF');if(musicEnabled)startMusic();else stopMusic()};
+
+})();
+</script>
+</body>
+</html>
